@@ -109,29 +109,65 @@ class CocoAnnotationsWriter(WriterInterface):
             with open(coco_annotations_path, 'r') as fp:
                 existing_coco_annotations = json.load(fp)
             image_offset = max([image["id"] for image in existing_coco_annotations["images"]]) + 1
+        elif self.config.get_bool("append_to_existing_output_uniq", False):
+            image_offset = 0
+
+            # Look for image file with highest index
+            for path in os.listdir(self._coco_data_dir):
+                if path.endswith(".png"):
+                    index = path[len("rgb_"):-len(".png")]
+                    if index.isdigit():
+                        image_offset = max(image_offset, int(index) + 1)
+
+            existing_coco_annotations = None
         else:
             image_offset = 0
             existing_coco_annotations = None
 
-        # collect all RGB paths
-        new_coco_image_paths = []
-        # for each rendered frame
-        for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end):
-            segmentation_map_paths.append(segmentation_map_output["path"] % frame)
+        if not self.config.get_bool("append_to_existing_output_uniq", False):
+            # collect all RGB paths
+            new_coco_image_paths = []
+            # for each rendered frame
+            for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end):
+                segmentation_map_paths.append(segmentation_map_output["path"] % frame)
+                import pdb
+                pdb.set_trace()
 
-            source_path = rgb_output["path"] % frame
-            target_path = os.path.join(self._coco_data_dir, os.path.basename(rgb_output["path"] % (frame + image_offset)))
+                source_path = rgb_output["path"] % frame
+                target_path = os.path.join(self._coco_data_dir, os.path.basename(rgb_output["path"] % (frame + image_offset)))
 
-            shutil.copyfile(source_path, target_path)
-            new_coco_image_paths.append(os.path.basename(target_path))
+                shutil.copyfile(source_path, target_path)
+                new_coco_image_paths.append(os.path.basename(target_path))
 
-        coco_output = CocoUtility.generate_coco_annotations(segmentation_map_paths,
-                                                            new_coco_image_paths,
-                                                            inst_attribute_maps,
-                                                            self._supercategory,
-                                                            self.mask_encoding_format,
-                                                            existing_coco_annotations)
+            coco_output = CocoUtility.generate_coco_annotations(segmentation_map_paths,
+                                                                new_coco_image_paths,
+                                                                inst_attribute_maps,
+                                                                self._supercategory,
+                                                                self.mask_encoding_format,
+                                                                existing_coco_annotations)
 
-        print("Writing coco annotations to " + coco_annotations_path)
-        with open(coco_annotations_path, 'w') as fp:
-            json.dump(coco_output, fp)
+            print("Writing coco annotations to " + coco_annotations_path)
+            with open(coco_annotations_path, 'w') as fp:
+                json.dump(coco_output, fp)
+        else:
+            # collect all RGB paths
+            # for each rendered frame
+            for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end):
+
+                source_path = rgb_output["path"] % frame
+                target_path = os.path.join(self._coco_data_dir, os.path.basename(rgb_output["path"] % (frame + image_offset)))
+
+                shutil.copyfile(source_path, target_path)
+
+                coco_output = CocoUtility.generate_coco_annotations([segmentation_map_output["path"] % frame],
+                                                                [os.path.basename(target_path)],
+                                                                inst_attribute_maps,
+                                                                self._supercategory,
+                                                                self.mask_encoding_format,
+                                                                existing_coco_annotations)
+
+                coco_annotations_path = os.path.join(self._coco_data_dir, os.path.basename('rgb_%04d.json'% (frame + image_offset)))
+                print("Writing coco annotations to " + coco_annotations_path)
+                with open(coco_annotations_path, 'w') as fp:
+                    json.dump(coco_output, fp)
+
