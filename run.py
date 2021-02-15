@@ -23,6 +23,7 @@ parser.add_argument('args', metavar='arguments', nargs='*', help='Additional arg
 parser.add_argument('--reinstall-packages', dest='reinstall_packages', action='store_true', help='If given, all python packages configured inside the configuration file will be reinstalled.')
 parser.add_argument('--reinstall-blender', dest='reinstall_blender', action='store_true', help='If given, the blender installation is deleted and reinstalled. Is ignored, if a "custom_blender_path" is configured in the configuration file.')
 parser.add_argument('--batch_process', help='Renders a batch of house-cam combinations, by reading a file containing the combinations on each line, where each line is the standard placeholder arguments for rendering a single scene separated by spaces. The value of this option is the path to the index file, no need to add placeholder arguments.')
+parser.add_argument('--batch_nprocess', help='Renders a batch of house-cam combinations, by reading a file containing the combinations on each line, where each line is the standard placeholder arguments for rendering a single scene separated by spaces. The value of this option is the path to the index file, no need to add placeholder arguments.')
 parser.add_argument('--temp-dir', dest='temp_dir', default=None, help="The path to a directory where all temporary output files should be stored. If it doesn't exist, it is created automatically. Type: string. Default: \"/dev/shm\" or \"/tmp/\" depending on which is available.")
 parser.add_argument('--keep-temp-dir', dest='keep_temp_dir', action='store_true', help="If set, the temporary directory is not removed in the end.")
 parser.add_argument('-h', '--help', dest='help', action='store_true', help='Show this help message and exit.')
@@ -33,7 +34,7 @@ if args.config is None:
     exit(0)
 
 config_parser = ConfigParser()
-config = config_parser.parse(args.config, args.args, args.help, skip_arg_placeholders=(args.batch_process != None)) # Don't parse placeholder args in batch mode.
+config = config_parser.parse(args.config, args.args, args.help, skip_arg_placeholders=(args.batch_process != None or args.batch_nprocess != None)) # Don't parse placeholder args in batch mode.
 setup_config = config["setup"]
 
 # If blender should be downloaded automatically
@@ -270,8 +271,11 @@ if not os.path.exists(temp_dir):
     os.makedirs(temp_dir)
 
 
-if not args.batch_process:
+if not args.batch_process and not args.batch_nprocess:
     p = subprocess.Popen([blender_run_path, "--background", "--python-exit-code", "2", "--python", path_src_run, "--", args.config, temp_dir] + args.args,
+                         env=dict(os.environ, PYTHONPATH=""), cwd=repo_root_directory)
+elif args.batch_nprocess:  # Pass the index file path containing placeholder args for all input combinations (cam, house, output path)
+    p = subprocess.Popen([blender_run_path, "--background", "--python-exit-code", "2", "--python", path_src_run, "--",  args.config, temp_dir, "--batch-nprocess", args.batch_nprocess],
                          env=dict(os.environ, PYTHONPATH=""), cwd=repo_root_directory)
 else:  # Pass the index file path containing placeholder args for all input combinations (cam, house, output path)
     p = subprocess.Popen([blender_run_path, "--background", "--python-exit-code", "2", "--python", path_src_run, "--",  args.config, temp_dir, "--batch-process", args.batch_process],

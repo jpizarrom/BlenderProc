@@ -23,9 +23,12 @@ sys.path.append(packages_path)
 # Read args
 argv = sys.argv
 batch_index_file = None
+batch_nindex_file = None
 
 if "--batch-process" in argv:
     batch_index_file = argv[argv.index("--batch-process") + 1]
+if "--batch-nprocess" in argv:
+    batch_nindex_file = argv[argv.index("--batch-nprocess") + 1]
 
 argv = argv[argv.index("--") + 1:]
 working_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,10 +38,10 @@ from src.utility.Utility import Utility
 
 config_path = argv[0]
 temp_dir = argv[1]
-if batch_index_file == None:
+if batch_index_file == None and batch_nindex_file == None:
     pipeline = Pipeline(config_path, argv[2:], working_dir, temp_dir)
     pipeline.run()
-else:
+elif batch_index_file is not None:
     with open(Utility.resolve_path(batch_index_file), "r") as f:
         lines = f.readlines()
 
@@ -46,3 +49,15 @@ else:
             args = line.split(" ")
             pipeline = Pipeline(config_path, args, working_dir, temp_dir)
             pipeline.run()
+elif batch_nindex_file is not None:
+    with open(Utility.resolve_path(batch_nindex_file), "r") as f:
+        lines = f.readlines()
+
+        for line in lines:
+            args = line.split(" ")
+            n = int(args[0])
+            args = args[1:]
+            for i in range(n):
+                pipeline = Pipeline(config_path, args, working_dir, temp_dir)
+                pipeline.run()
+
