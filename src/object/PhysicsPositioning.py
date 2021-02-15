@@ -209,7 +209,7 @@ class PhysicsPositioning(Module):
         """
         # Run simulation
         point_cache = bpy.context.scene.rigidbody_world.point_cache
-        point_cache.frame_start = 1
+        point_cache.frame_start = bpy.context.scene.frame_end
 
         min_simulation_time = self.config.get_float("min_simulation_time", 4.0)
         max_simulation_time = self.config.get_float("max_simulation_time", 40.0)

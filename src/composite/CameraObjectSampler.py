@@ -36,9 +36,11 @@ class CameraObjectSampler(Module):
 
         object_pose_sampler_config = config.get_raw_dict("object_pose_sampler", {})
         camera_pose_sampler_config = config.get_raw_dict("camera_pose_sampler", {})
+        physics_positioning_config = config.get_raw_dict("physics_positioning", {})
 
         self._object_pose_sampler = Utility.initialize_modules([object_pose_sampler_config])[0]
         self._camera_pose_sampler = Utility.initialize_modules([camera_pose_sampler_config])[0]
+        self._physics_positioning = Utility.initialize_modules([physics_positioning_config])[0]
     
     def run(self):
         total_noof_cams = self.config.get_int("total_noof_cams", 10)
@@ -59,3 +61,17 @@ class CameraObjectSampler(Module):
 
             # sample new camera poses
             self._camera_pose_sampler.run()
+
+            # if frame_id == 0:
+            #     self._camera_pose_sampler.run()
+            # else:
+            #     bpy.context.scene.frame_end = frame_id + 1
+
+            # bpy.context.scene.frame_end = frame_id + 1
+
+            self._physics_positioning.run()
+
+            # TODO: Use Getter for selecting objects
+            for obj in get_all_mesh_objects():
+                # insert keyframes for current object poses
+                self._object_pose_sampler.insert_key_frames(obj, frame_id)
